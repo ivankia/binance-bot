@@ -49,6 +49,8 @@ export class AppService {
       baseURL: process.env.BASE_URL
     });
 
+    await this.exchangeInfo();
+
     await this.binance.futuresBalance().then(res => {
       if (res.length) {
         let balance = res.filter(function (el) {
