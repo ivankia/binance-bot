@@ -1,0 +1,11 @@
+[Unit]
+Description=Binance bot
+
+[Service]
+User=root
+WorkingDirectory=/root/binance-bot
+ExecStart=npm run start:dev
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
