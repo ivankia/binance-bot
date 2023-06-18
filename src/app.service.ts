@@ -180,24 +180,22 @@ export class AppService {
   @Cron(CronExpression.EVERY_5_MINUTES)
   // @Cron(CronExpression.EVERY_10_SECONDS)
   public async open() {
-    this.logger.debug('Opening bids');
-
     const result: any[] = await this.signalModel.find({
       'status': StatusEnum.WAITING
     });
 
-    this.logger.debug(`Orders waiting to open (${result.length})`);
+    this.logger.debug(`Open orders. Waiting ${result.length} pairs`);
 
     for (const pair of result) {
-      this.logger.debug(`Pair ${pair.symbol}`);
       let symbolInfo = await this.getSymbolInfo(pair.symbol);
 
       try {
         const dateDiff = new Date().getTime() - pair.date_created;
         const candlesCount = dateDiff / 600000;
         const candles = await this.binance.futuresCandles(pair.symbol, '5m', { limit: candlesCount.toFixed() });
-        const priceDiff = Math.abs((candles[candles.length - 1][4] - pair.price) / pair.price * 100).toFixed(0);
-        this.logger.debug(`Candle close 5m ${candles[candles.length - 1][4]} (${candles.length}). Diff ${priceDiff}%`);
+        const priceDiff = Math.abs((candles[candles.length - 1][4] - pair.price) / pair.price * 100).toFixed(2);
+
+        this.logger.debug(`Pair ${pair.symbol} 5m candle ${candles[candles.length - 1][4]} (${candles.length}) (${priceDiff}%)`);
 
         let isActivePair = true;
         candles.forEach((candle, index) => {
