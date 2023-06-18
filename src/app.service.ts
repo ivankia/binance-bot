@@ -195,7 +195,7 @@ export class AppService {
         const candles = await this.binance.futuresCandles(pair.symbol, '5m', { limit: candlesCount.toFixed() });
         const priceDiff = Math.abs((candles[candles.length - 1][4] - pair.price) / pair.price * 100).toFixed(2);
 
-        this.logger.debug(`Pair ${pair.symbol} 5m candle ${candles[candles.length - 1][4]} (${candles.length}) (${priceDiff}%)`);
+        this.logger.debug(`${pair.side} ${pair.symbol} candle closed ${candles[candles.length - 1][4]} (${priceDiff}%)`);
 
         let isActivePair = true;
         candles.forEach((candle, index) => {
