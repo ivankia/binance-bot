@@ -177,8 +177,8 @@ export class AppService {
     }
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
-  // @Cron(CronExpression.EVERY_10_SECONDS)
+  // @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   public async open() {
     this.logger.debug('Opening bids');
 
@@ -202,11 +202,9 @@ export class AppService {
         candles.forEach((candle, index) => {
           if (index < candles.length - 1) {
             if (pair.side === 'LONG' && candle[4] > pair.price) {
-              console.log(candle[4])
               isActivePair = false;
             }
             if (pair.side === 'SHORT' && candle[4] < pair.price) {
-              console.log(candle[4])
               isActivePair = false;
             }
           }
