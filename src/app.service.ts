@@ -159,8 +159,6 @@ export class AppService {
 
         this.deposit.maxPairs = parseInt(process.env.MAX_PAIRS) || result.length;
         pair.quantity = (
-            // parseFloat(process.env.MAX_AVAILABLE_SUM) /
-            // parseInt(process.env.MAX_PAIRS) *
             this.deposit.maxSum /
             this.deposit.maxPairs *
             parseInt(process.env.LEVERAGE) /
@@ -188,19 +186,43 @@ export class AppService {
       'status': StatusEnum.WAITING
     });
 
-    this.logger.debug(`Orders waiting to open (${result.length})`, result);
+    this.logger.debug(`Orders waiting to open (${result.length})`);
 
     for (const pair of result) {
       this.logger.debug(`Pair ${pair.symbol}`);
       let symbolInfo = await this.getSymbolInfo(pair.symbol);
 
       try {
-        const candle = await this.binance.futuresCandles(pair.symbol, '5m', { limit: 2 });
-        this.logger.debug('Candle 5m', candle[0]);
+        const dateDiff = new Date().getTime() - pair.date_created;
+        const candlesCount = dateDiff / 600000;
+        const candles = await this.binance.futuresCandles(pair.symbol, '5m', { limit: candlesCount.toFixed() });
+        this.logger.debug(`Candle close 5m ${candles[candles.length - 1][4]} (${candles.length})`);
+
+        let isActivePair = true;
+        candles.forEach((candle, index) => {
+          if (index < candles.length - 1) {
+            if (pair.side === 'LONG' && candle[4] > pair.price) {
+              console.log(candle[4])
+              isActivePair = false;
+            }
+            if (pair.side === 'SHORT' && candle[4] < pair.price) {
+              console.log(candle[4])
+              isActivePair = false;
+            }
+          }
+        });
+
+        if (!isActivePair) {
+          pair.status = StatusEnum.MISSED_ORDER;
+          pair.date_updated = new Date();
+          pair.save();
+          this.logger.debug(`Missed order ${pair.symbol} by price ${pair.price}`);
+          continue;
+        }
 
         const price = await this.getMarketPrice(pair.symbol, symbolInfo[0].pricePrecision);
 
-        if (this.checkOrderPrice(pair, candle[0][4], price)) {
+        if (this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
           this.logger.debug(`Set leverage ${process.env.LEVERAGE}`);
           await this.binance.futuresLeverage(pair.symbol, parseInt(process.env.LEVERAGE));
 
@@ -209,8 +231,6 @@ export class AppService {
 
           this.deposit.maxPairs = parseInt(process.env.MAX_PAIRS) || result.length;
           const qty = (
-              // parseFloat(process.env.MAX_AVAILABLE_SUM) /
-              // parseInt(process.env.MAX_PAIRS) *
               this.deposit.maxSum /
               this.deposit.maxPairs *
               parseInt(process.env.LEVERAGE) /
@@ -382,7 +402,7 @@ export class AppService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  @Cron(CronExpression.EVERY_DAY_AT_10PM)
   public async exchangeInfo() {
     await this.binance.futuresExchangeInfo().then(res => {
       this.logger.debug('Updating exchange info');

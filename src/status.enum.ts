@@ -7,4 +7,5 @@ export enum StatusEnum {
     'CLOSED_AUTO',
     'INVALID_ORDER',
     'ERROR',
+    'MISSED_ORDER',
 }
