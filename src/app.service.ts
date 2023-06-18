@@ -177,8 +177,8 @@ export class AppService {
     }
   }
 
-  // @Cron(CronExpression.EVERY_5_MINUTES)
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  // @Cron(CronExpression.EVERY_10_SECONDS)
   public async open() {
     this.logger.debug('Opening bids');
 
