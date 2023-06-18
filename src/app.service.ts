@@ -191,7 +191,7 @@ export class AppService {
 
       try {
         const dateDiff = new Date().getTime() - pair.date_created;
-        const candlesCount = dateDiff / 600000;
+        const candlesCount = dateDiff / 300000;
         const candles = await this.binance.futuresCandles(pair.symbol, '5m', { limit: candlesCount.toFixed() });
         const priceDiff = Math.abs((candles[candles.length - 1][4] - pair.price) / pair.price * 100).toFixed(2);
 
