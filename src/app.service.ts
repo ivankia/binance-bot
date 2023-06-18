@@ -196,7 +196,7 @@ export class AppService {
         const dateDiff = new Date().getTime() - pair.date_created;
         const candlesCount = dateDiff / 600000;
         const candles = await this.binance.futuresCandles(pair.symbol, '5m', { limit: candlesCount.toFixed() });
-        const priceDiff = Math.abs(pair.price / (candles[candles.length - 1][4] - pair.price));
+        const priceDiff = Math.abs((candles[candles.length - 1][4] - pair.price) / pair.price * 100).toFixed(0);
         this.logger.debug(`Candle close 5m ${candles[candles.length - 1][4]} (${candles.length}). Diff ${priceDiff}%`);
 
         let isActivePair = true;
