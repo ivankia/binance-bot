@@ -7,7 +7,7 @@ WorkingDirectory=/root/binance-bot
 ExecStart=npm run start:dev
 Restart=always
 StandardOutput=append:/root/binance-bot.log
-StandardError=append:/root/binance-bot-error.log
+StandardError=append:/root/binance-bot.log
 
 [Install]
 WantedBy=multi-user.target
