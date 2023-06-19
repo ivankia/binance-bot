@@ -137,8 +137,8 @@ export class AppService {
     }
   }
 
-  // @Cron(CronExpression.EVERY_MINUTE)
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_MINUTE)
+  // @Cron(CronExpression.EVERY_10_SECONDS)
   public async run() {
     const result: any[] = await this.signalModel.find({
       'status': StatusEnum.NEW
