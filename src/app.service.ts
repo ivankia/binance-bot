@@ -149,13 +149,19 @@ export class AppService {
       return;
     }
 
+    const prices = this.binance.futuresPrices();
+
     for (const pair of result) {
       this.logger.debug(`Fixing pair ${pair.symbol}`);
 
       const symbol = await this.getSymbolInfo(pair.symbol);
 
       if (symbol[0].pair === pair.symbol) {
-        const price = await this.getMarketPrice(pair.symbol, symbol[0].pricePrecision);
+        // const price = await this.getMarketPrice(pair.symbol, symbol[0].pricePrecision);
+        let price = prices.filter(function (el) {
+          return el.symbol === pair.symbol;
+        });
+        price = parseFloat(price).toFixed(symbol[0].pricePrecision);
 
         this.deposit.maxPairs = parseInt(process.env.MAX_PAIRS) || result.length;
         pair.quantity = (
@@ -186,8 +192,15 @@ export class AppService {
 
     this.logger.debug(`Open orders. Waiting ${result.length} pairs`);
 
+    const prices = this.binance.futuresPrices();
+
     for (const pair of result) {
       let symbolInfo = await this.getSymbolInfo(pair.symbol);
+
+      let price = prices.filter(function (el) {
+        return el.symbol === pair.symbol;
+      });
+      price = parseFloat(price).toFixed(symbolInfo[0].pricePrecision);
 
       try {
         const dateDiff = new Date().getTime() - pair.date_created;
@@ -217,7 +230,7 @@ export class AppService {
           continue;
         }
 
-        const price = await this.getMarketPrice(pair.symbol, symbolInfo[0].pricePrecision);
+        // const price = await this.getMarketPrice(pair.symbol, symbolInfo[0].pricePrecision);
 
         if (this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
           this.logger.debug(`Set leverage ${process.env.LEVERAGE}`);
