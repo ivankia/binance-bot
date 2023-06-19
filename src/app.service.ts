@@ -137,8 +137,8 @@ export class AppService {
     }
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
-  // @Cron(CronExpression.EVERY_10_SECONDS)
+  // @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   public async run() {
     const result: any[] = await this.signalModel.find({
       'status': StatusEnum.NEW
@@ -149,7 +149,7 @@ export class AppService {
       return;
     }
 
-    const prices = this.binance.futuresPrices();
+    const prices = await this.binance.futuresPrices();
 
     for (const pair of result) {
       this.logger.debug(`Fixing pair ${pair.symbol}`);
@@ -157,12 +157,18 @@ export class AppService {
       const symbol = await this.getSymbolInfo(pair.symbol);
 
       if (symbol[0].pair === pair.symbol) {
-        // const price = await this.getMarketPrice(pair.symbol, symbol[0].pricePrecision);
-        let price = prices.filter(function (el) {
-          return el.symbol === pair.symbol;
+        const ticker: any = Object.entries(prices).filter(el => {
+          return el[0] === pair.symbol;
         });
-        price = parseFloat(price).toFixed(symbol[0].pricePrecision);
 
+        if (!ticker.length) {
+          pair.status = StatusEnum.ERROR;
+          pair.message = 'Symbol not found';
+          pair.save();
+          continue;
+        }
+
+        let price: any = parseFloat(ticker[0][1]).toFixed(symbol[0].pricePrecision);
         this.deposit.maxPairs = parseInt(process.env.MAX_PAIRS) || result.length;
         pair.quantity = (
             this.deposit.maxSum /
@@ -197,10 +203,18 @@ export class AppService {
     for (const pair of result) {
       let symbolInfo = await this.getSymbolInfo(pair.symbol);
 
-      let price = prices.filter(function (el) {
-        return el.symbol === pair.symbol;
+      const ticker: any = Object.entries(prices).filter(el => {
+        return el[0] === pair.symbol;
       });
-      price = parseFloat(price).toFixed(symbolInfo[0].pricePrecision);
+
+      if (!ticker.length) {
+        pair.status = StatusEnum.ERROR;
+        pair.message = 'Symbol not found';
+        pair.save();
+        continue;
+      }
+
+      let price: any = parseFloat(ticker[0][1]).toFixed(symbolInfo[0].pricePrecision);
 
       try {
         const dateDiff = new Date().getTime() - pair.date_created;
@@ -229,8 +243,6 @@ export class AppService {
           this.logger.debug(`Missed order ${pair.symbol} by price ${pair.price}`);
           continue;
         }
-
-        // const price = await this.getMarketPrice(pair.symbol, symbolInfo[0].pricePrecision);
 
         if (this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
           this.logger.debug(`Set leverage ${process.env.LEVERAGE}`);
