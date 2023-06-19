@@ -198,7 +198,7 @@ export class AppService {
 
     this.logger.debug(`Open orders. Waiting ${result.length} pairs`);
 
-    const prices = this.binance.futuresPrices();
+    const prices = await this.binance.futuresPrices();
 
     for (const pair of result) {
       let symbolInfo = await this.getSymbolInfo(pair.symbol);
