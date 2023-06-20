@@ -226,7 +226,7 @@ export class AppService {
 
         let isActivePair = true;
         candles.forEach((candle, index) => {
-          if (index < candles.length - 1) {
+          if (index < candles.length - 2) {
             if (pair.side === 'LONG' && candle[4] > pair.price) {
               isActivePair = false;
             }
