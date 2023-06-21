@@ -189,8 +189,9 @@ export class AppService {
     }
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  // @Cron(CronExpression.EVERY_5_MINUTES)
   // @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_MINUTE)
   public async open() {
     const result: any[] = await this.signalModel.find({
       'status': StatusEnum.WAITING
@@ -236,7 +237,8 @@ export class AppService {
           }
         });
 
-        if (!isActivePair) {
+        // if (!isActivePair) {
+        if (isActivePair) {
           pair.status = StatusEnum.MISSED_ORDER;
           pair.date_updated = new Date();
           pair.save();
@@ -244,7 +246,8 @@ export class AppService {
           continue;
         }
 
-        if (this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
+        // if (this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
+        if (!this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
           this.logger.debug(`Set leverage ${process.env.LEVERAGE}`);
           await this.binance.futuresLeverage(pair.symbol, parseInt(process.env.LEVERAGE));
 
@@ -259,91 +262,39 @@ export class AppService {
               price
           ).toFixed(symbolInfo[0].quantityPrecision);
 
-          this.logger.debug(`Opening order by market, set stops. Price: ${price}, Qty: ${qty}, Side: ${pair.side}`);
+          this.logger.debug(`${pair.side} by market price: ${price}, qty: ${qty}`);
 
-          let orders = [
-            {
-              symbol: pair.symbol,
-              side: pair.side === 'LONG' ? 'BUY' : 'SELL',
-              type: 'MARKET',
-              quantity: qty.toString(),
-            },
-            {
-              symbol: pair.symbol,
-              side: pair.side === 'LONG' ? 'SELL' : 'BUY',
-              positionSide: 'BOTH',
-              type: 'STOP_MARKET',
-              stopPrice: (
-                  pair.side === 'LONG' ?
-                  pair.price - pair.price * parseFloat(process.env.STOP_LOSS) :
-                  pair.price + pair.price * parseFloat(process.env.TAKE_PROFIT)
-                ).toFixed(symbolInfo[0].pricePrecision),
-              closePosition: 'true',
-              timeInForce: 'GTE_GTC',
-              workingType: 'MARK_PRICE',
-              priceProtect: 'true',
-            },
-          ];
-
-          this.logger.debug('Orders', orders);
-
-          let success = false;
-
-          await this.binance.futuresMultipleOrders(orders).then(res => {
-            if (!res[0]?.orderId || !res[1]?.orderId) {
-              pair.message = pair.message + JSON.stringify(res);
-              pair.status = StatusEnum.ERROR;
-              this.logger.error('Place order error', res);
-            } else {
-              pair.order_id = res[0]?.orderId;
-              success = true;
-              this.logger.debug('Orders executed', res);
-            }
-          });
-
-          if (success) {
-            await this.binance.futuresMultipleOrders([
-              {
-                symbol: pair.symbol,
-                side: pair.side === 'LONG' ? 'SELL' : 'BUY',
-                positionSide: 'BOTH',
-                type: 'TAKE_PROFIT_MARKET',
-                stopPrice: (
-                    pair.side === 'LONG' ?
-                        pair.price + pair.price * parseFloat(process.env.TAKE_PROFIT) :
-                        pair.price - pair.price * parseFloat(process.env.STOP_LOSS)
-                ).toFixed(symbolInfo[0].pricePrecision),
-                closePosition: 'true',
-                timeInForce: 'GTE_GTC',
-                workingType: 'MARK_PRICE',
-                priceProtect: 'true',
-              },
-            ]).then(res => {
-              if (!res[0]?.orderId) {
-                pair.message = pair.message + JSON.stringify(res);
-                pair.status = StatusEnum.ERROR;
-                this.logger.error('Place order error', res);
-              } else {
-                pair.order_id = res[0]?.orderId;
-                success = true;
-                this.logger.debug('Orders executed', res);
-              }
-            });
-          }
-
-          if (success) {
+          if (await this.placeOrder(pair, qty) === true) {
             pair.status = StatusEnum.OPEN;
-          } else {
-            pair.message = 'Place order error: ' + pair.message;
+
+            setTimeout(async () => {
+              try {
+                await this.placeOrder(pair, qty, 'STOP_MARKET');
+              } catch (e) {
+                console.log(e);
+                pair.status = StatusEnum.ERROR;
+                pair.message = JSON.stringify(e);
+                pair.date_updated = new Date();
+                pair.save();
+              }
+            }, 3000);
+
+            setTimeout(async () => {
+              try {
+                await this.placeOrder(pair, qty, 'TAKE_PROFIT_MARKET');
+              } catch (e) {
+                console.log(e);
+                pair.status = StatusEnum.ERROR;
+                pair.message = JSON.stringify(e);
+                pair.date_updated = new Date();
+                pair.save();
+              }
+            }, 3000);
+
+            pair.date_updated = new Date();
+            pair.save();
           }
         }
-        // else {
-        //   pair.message = 'Check price error';
-        //   pair.status = StatusEnum.INVALID_ORDER
-        // }
-
-        pair.date_updated = new Date();
-        pair.save();
       } catch (e) {
         this.logger.error('Open bid', e);
       }
@@ -466,11 +417,61 @@ export class AppService {
     return false;
   }
 
-  private async getMarketPrice(symbol, pricePrecision = 0) {
-    let price;
-    await this.binance.futuresMarkPrice(symbol).then(res => {
-      price = parseFloat(res.markPrice).toFixed(pricePrecision);
+  private async placeOrder(pair, qty, type = 'MARKET'): Promise<any> {
+    let orders = [];
+    let symbol = await this.getSymbolInfo(pair.symbol);
+
+    if (type === 'MARKET') {
+      orders.push({
+        symbol: pair.symbol,
+        side: pair.side === 'LONG' ? 'BUY' : 'SELL',
+        type: 'MARKET',
+        quantity: qty.toString(),
+        },
+      );
+    }
+    if (type === 'STOP_MARKET' || type === 'TAKE_PROFIT_MARKET') {
+      const stopPrice =
+          type === 'STOP_MARKET'
+            ?
+              (
+                pair.side === 'LONG' ?
+                    pair.price - pair.price * parseFloat(process.env.STOP_LOSS) :
+                    pair.price + pair.price * parseFloat(process.env.TAKE_PROFIT)
+              ).toFixed(symbol[0].pricePrecision)
+            :
+              (
+                pair.side === 'LONG' ?
+                    pair.price + pair.price * parseFloat(process.env.TAKE_PROFIT) :
+                    pair.price - pair.price * parseFloat(process.env.STOP_LOSS)
+              ).toFixed(symbol[0].pricePrecision);
+
+      orders.push({
+          symbol: pair.symbol,
+          side: pair.side === 'LONG' ? 'SELL' : 'BUY',
+          positionSide: 'BOTH',
+          type: type,
+          stopPrice: stopPrice,
+          closePosition: 'true',
+          timeInForce: 'GTE_GTC',
+          workingType: 'MARK_PRICE',
+          priceProtect: 'true',
+        }
+      );
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        this.binance.futuresMultipleOrders(orders).then(res => {
+          if (!res[0]?.orderId) {
+            this.logger.error(`Place order: ${JSON.stringify(res)}`);
+            reject(res[0]);
+          }
+          resolve(true);
+        });
+      } catch (e) {
+        this.logger.error(`Place order: ${JSON.stringify(e)}`);
+      }
     });
-    return price;
   }
 }
