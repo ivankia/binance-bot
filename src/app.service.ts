@@ -189,9 +189,8 @@ export class AppService {
     }
   }
 
-  // @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_5_MINUTES)
   // @Cron(CronExpression.EVERY_10_SECONDS)
-  @Cron(CronExpression.EVERY_MINUTE)
   public async open() {
     const result: any[] = await this.signalModel.find({
       'status': StatusEnum.WAITING
@@ -237,8 +236,7 @@ export class AppService {
           }
         });
 
-        // if (!isActivePair) {
-        if (isActivePair) {
+        if (!isActivePair) {
           pair.status = StatusEnum.MISSED_ORDER;
           pair.date_updated = new Date();
           pair.save();
@@ -246,8 +244,7 @@ export class AppService {
           continue;
         }
 
-        // if (this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
-        if (!this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
+        if (this.checkOrderPrice(pair, candles[candles.length - 1][4], price)) {
           this.logger.debug(`Set leverage ${process.env.LEVERAGE}`);
           await this.binance.futuresLeverage(pair.symbol, parseInt(process.env.LEVERAGE));
 
