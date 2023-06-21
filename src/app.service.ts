@@ -192,6 +192,9 @@ export class AppService {
   @Cron(CronExpression.EVERY_5_MINUTES)
   // @Cron(CronExpression.EVERY_10_SECONDS)
   public async open() {
+    const openOrders: any[] = await this.signalModel.find({
+      'status': StatusEnum.OPEN
+    });
     const result: any[] = await this.signalModel.find({
       'status': StatusEnum.WAITING
     });
@@ -251,7 +254,7 @@ export class AppService {
           this.logger.debug(`Set margin type ISOLATED`);
           await this.binance.futuresMarginType(pair.symbol, 'ISOLATED');
 
-          this.deposit.maxPairs = parseInt(process.env.MAX_PAIRS) || result.length;
+          this.deposit.maxPairs = parseInt(process.env.MAX_PAIRS) || result.length + openOrders.length;
           const qty = (
               this.deposit.maxSum /
               this.deposit.maxPairs *
