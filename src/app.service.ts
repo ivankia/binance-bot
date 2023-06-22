@@ -264,12 +264,12 @@ export class AppService {
 
           this.logger.debug(`${pair.side} by market price: ${price}, qty: ${qty}`);
 
-          if (await this.placeOrder(pair, qty) === true) {
+          if (await this.placeOrder(pair, qty, price) === true) {
             pair.status = StatusEnum.OPEN;
 
             setTimeout(async () => {
               try {
-                await this.placeOrder(pair, qty, 'STOP_MARKET');
+                await this.placeOrder(pair, qty, price, 'STOP_MARKET');
               } catch (e) {
                 console.log(e);
                 pair.status = StatusEnum.ERROR;
@@ -281,7 +281,7 @@ export class AppService {
 
             setTimeout(async () => {
               try {
-                await this.placeOrder(pair, qty, 'TAKE_PROFIT_MARKET');
+                await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET');
               } catch (e) {
                 console.log(e);
                 pair.status = StatusEnum.ERROR;
@@ -417,7 +417,7 @@ export class AppService {
     return false;
   }
 
-  private async placeOrder(pair, qty, type = 'MARKET'): Promise<any> {
+  private async placeOrder(pair, qty, price, type = 'MARKET'): Promise<any> {
     let orders = [];
     let symbol = await this.getSymbolInfo(pair.symbol);
 
@@ -429,6 +429,8 @@ export class AppService {
         quantity: qty.toString(),
         },
       );
+
+      this.logger.debug(`Bid ${type} ${pair.symbol} ${price}`);
     }
     if (type === 'STOP_MARKET' || type === 'TAKE_PROFIT_MARKET') {
       const stopPrice =
@@ -436,14 +438,14 @@ export class AppService {
             ?
               (
                 pair.side === 'LONG' ?
-                    pair.price - pair.price * parseFloat(process.env.STOP_LOSS) :
-                    pair.price + pair.price * parseFloat(process.env.TAKE_PROFIT)
+                    price - price * parseFloat(process.env.STOP_LOSS) :
+                    price + price * parseFloat(process.env.TAKE_PROFIT)
               ).toFixed(symbol[0].pricePrecision)
             :
               (
                 pair.side === 'LONG' ?
-                    pair.price + pair.price * parseFloat(process.env.TAKE_PROFIT) :
-                    pair.price - pair.price * parseFloat(process.env.STOP_LOSS)
+                    price + price * parseFloat(process.env.TAKE_PROFIT) :
+                    price - price * parseFloat(process.env.STOP_LOSS)
               ).toFixed(symbol[0].pricePrecision);
 
       orders.push({
@@ -458,6 +460,8 @@ export class AppService {
           priceProtect: 'true',
         }
       );
+
+      this.logger.debug(`Bid ${type} ${pair.symbol} ${stopPrice}`);
     }
 
     return new Promise((resolve, reject) => {
