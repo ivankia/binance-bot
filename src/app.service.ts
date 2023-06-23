@@ -456,12 +456,14 @@ export class AppService {
     if (type === 'STOP_MARKET' || type === 'TAKE_PROFIT_MARKET') {
       const stopPrice = type === 'STOP_MARKET' ? (pair.side === 'LONG' ? price - price * parseFloat(process.env.STOP_LOSS) : price + price * parseFloat(process.env.TAKE_PROFIT)) : (pair.side === 'LONG' ? price + price * parseFloat(process.env.TAKE_PROFIT) : price - price * parseFloat(process.env.STOP_LOSS));
 
+      console.log(stopPrice);
+
       orders.push({
           symbol: pair.symbol,
           side: pair.side === 'LONG' ? 'SELL' : 'BUY',
           positionSide: 'BOTH',
           type: type,
-          stopPrice: stopPrice.toFixed(symbol[0].pricePrecision),
+          stopPrice: parseFloat(stopPrice).toFixed(symbol[0].pricePrecision),
           closePosition: 'true',
           timeInForce: 'GTE_GTC',
           workingType: 'MARK_PRICE',
