@@ -463,7 +463,7 @@ export class AppService {
           side: pair.side === 'LONG' ? 'SELL' : 'BUY',
           positionSide: 'BOTH',
           type: type,
-          stopPrice: parseFloat(stopPrice).toFixed(symbol[0].pricePrecision),
+          stopPrice: stopPrice.toFixed(symbol[0].pricePrecision),
           closePosition: 'true',
           timeInForce: 'GTE_GTC',
           workingType: 'MARK_PRICE',
