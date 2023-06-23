@@ -282,8 +282,6 @@ export class AppService {
               price
           ).toFixed(symbolInfo[0].quantityPrecision);
 
-          this.logger.debug(`${pair.side} by market price: ${price}, qty: ${qty}`);
-
           if (await this.placeOrder(pair, qty, price) === true) {
             pair.status = StatusEnum.OPEN;
             pair.quantity = qty;
@@ -302,7 +300,7 @@ export class AppService {
 
             setTimeout(async () => {
               try {
-                await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET');
+                await this.placeOrder(pair, qty, price, 'TRAILING_STOP_MARKET');
               } catch (e) {
                 console.log(e);
                 pair.status = StatusEnum.ERROR;
@@ -311,6 +309,19 @@ export class AppService {
                 pair.save();
               }
             }, 3000);
+
+            // setTimeout(async () => {
+            //   try {
+            //     await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET');
+            //   } catch (e) {
+            //     console.log(e);
+            //     pair.status = StatusEnum.ERROR;
+            //     pair.message = JSON.stringify(e);
+            //     pair.date_updated = new Date();
+            //     pair.save();
+            //   }
+            // }, 3000);
+            //
 
             pair.date_updated = new Date();
             pair.save();
@@ -441,6 +452,9 @@ export class AppService {
   private async placeOrder(pair, qty, price, type = 'MARKET'): Promise<any> {
     let orders = [];
     let symbol = await this.getSymbolInfo(pair.symbol);
+    const stopPrice = type === 'STOP_MARKET' ? (pair.side === 'LONG' ? parseFloat(price) - parseFloat(price) * parseFloat(process.env.STOP_LOSS) : parseFloat(price) + parseFloat(price) * parseFloat(process.env.TAKE_PROFIT)) : (pair.side === 'LONG' ? parseFloat(price) + parseFloat(price) * parseFloat(process.env.TAKE_PROFIT) : parseFloat(price) - parseFloat(price) * parseFloat(process.env.STOP_LOSS));
+
+    this.logger.debug(`${pair.side} ${pair.symbol}. Order: ${type}, Price: ${price}, Qty: ${qty}`);
 
     if (type === 'MARKET') {
       orders.push({
@@ -453,11 +467,23 @@ export class AppService {
 
       this.logger.debug(`Bid ${type} ${pair.symbol} ${price}`);
     }
+
+    if (type === 'TRAILING_STOP_MARKET') {
+      orders.push({
+        symbol: pair.symbol,
+        type: 'TRAILING_STOP_MARKET',
+        side: pair.side === 'LONG' ? 'SELL' : 'BUY',
+        positionSide: 'BOTH',
+        quantity: qty,
+        reduceOnly: false,
+        activatePrice: stopPrice,
+        priceRate: parseFloat(process.env.TRAILING_RATE),
+        workingType: 'MARK_PRICE', // 'CONTRACT_PRICE',
+        priceProtect: 'true',
+      });
+    }
+
     if (type === 'STOP_MARKET' || type === 'TAKE_PROFIT_MARKET') {
-      const stopPrice = type === 'STOP_MARKET' ? (pair.side === 'LONG' ? parseFloat(price) - parseFloat(price) * parseFloat(process.env.STOP_LOSS) : parseFloat(price) + parseFloat(price) * parseFloat(process.env.TAKE_PROFIT)) : (pair.side === 'LONG' ? parseFloat(price) + parseFloat(price) * parseFloat(process.env.TAKE_PROFIT) : parseFloat(price) - parseFloat(price) * parseFloat(process.env.STOP_LOSS));
-
-      console.log(stopPrice);
-
       orders.push({
           symbol: pair.symbol,
           side: pair.side === 'LONG' ? 'SELL' : 'BUY',
