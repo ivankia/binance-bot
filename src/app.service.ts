@@ -454,20 +454,7 @@ export class AppService {
       this.logger.debug(`Bid ${type} ${pair.symbol} ${price}`);
     }
     if (type === 'STOP_MARKET' || type === 'TAKE_PROFIT_MARKET') {
-      const stopPrice =
-          type === 'STOP_MARKET'
-            ?
-              (
-                pair.side === 'LONG' ?
-                    price - price * parseFloat(process.env.STOP_LOSS) :
-                    price + price * parseFloat(process.env.TAKE_PROFIT)
-              ).toFixed(symbol[0].pricePrecision)
-            :
-              (
-                pair.side === 'LONG' ?
-                    price + price * parseFloat(process.env.TAKE_PROFIT) :
-                    price - price * parseFloat(process.env.STOP_LOSS)
-              ).toFixed(symbol[0].pricePrecision);
+      const stopPrice = type === 'STOP_MARKET' ? (pair.side === 'LONG' ? price - price * parseFloat(process.env.STOP_LOSS) : price + price * parseFloat(process.env.TAKE_PROFIT)).toFixed(symbol[0].pricePrecision) : (pair.side === 'LONG' ? price + price * parseFloat(process.env.TAKE_PROFIT) : price - price * parseFloat(process.env.STOP_LOSS)).toFixed(symbol[0].pricePrecision);
 
       orders.push({
           symbol: pair.symbol,
