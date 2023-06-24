@@ -452,11 +452,11 @@ export class AppService {
   private async placeOrder(pair, qty, price, type = 'MARKET'): Promise<any> {
     let orders = [];
     let symbol = await this.getSymbolInfo(pair.symbol);
-    const stopPrice = type === 'STOP_MARKET' ? (pair.side === 'LONG' ? parseFloat(price) - parseFloat(price) * parseFloat(process.env.STOP_LOSS) : parseFloat(price) + parseFloat(price) * parseFloat(process.env.TAKE_PROFIT)) : (pair.side === 'LONG' ? parseFloat(price) + parseFloat(price) * parseFloat(process.env.TAKE_PROFIT) : parseFloat(price) - parseFloat(price) * parseFloat(process.env.STOP_LOSS));
-
-    this.logger.debug(`${pair.side} ${pair.symbol}. Order: ${type}, Price: ${price}, Qty: ${qty}`);
+    let stopPrice = type === 'STOP_MARKET' ? (pair.side === 'LONG' ? parseFloat(price) - parseFloat(price) * parseFloat(process.env.STOP_LOSS) : parseFloat(price) + parseFloat(price) * parseFloat(process.env.TAKE_PROFIT)) : (pair.side === 'LONG' ? parseFloat(price) + parseFloat(price) * parseFloat(process.env.TAKE_PROFIT) : parseFloat(price) - parseFloat(price) * parseFloat(process.env.STOP_LOSS));
+    let stop = stopPrice.toFixed(symbol[0].pricePrecision);
 
     if (type === 'MARKET') {
+      this.logger.debug(`${pair.side} ${pair.symbol}. Order: ${type}, Price: ${price}, Qty: ${qty}`);
       orders.push({
         symbol: pair.symbol,
         side: pair.side === 'LONG' ? 'BUY' : 'SELL',
@@ -469,6 +469,7 @@ export class AppService {
     }
 
     if (type === 'TRAILING_STOP_MARKET') {
+      this.logger.debug(`${pair.side} ${pair.symbol}. Order: ${type}, Stop: ${stop}, Qty: ${qty}`);
       orders.push({
         symbol: pair.symbol,
         type: 'TRAILING_STOP_MARKET',
@@ -476,7 +477,7 @@ export class AppService {
         positionSide: 'BOTH',
         quantity: qty,
         reduceOnly: 'false',
-        activatePrice: stopPrice.toFixed(symbol[0].pricePrecision),
+        activatePrice: stop,
         priceRate: process.env.TRAILING_RATE,
         callbackRate: process.env.TRAILING_RATE,
         workingType: 'MARK_PRICE', // 'CONTRACT_PRICE',
@@ -485,20 +486,19 @@ export class AppService {
     }
 
     if (type === 'STOP_MARKET' || type === 'TAKE_PROFIT_MARKET') {
+      this.logger.debug(`${pair.side} ${pair.symbol}. Order: ${type}, Stop: ${stop}, Qty: ${qty}`);
       orders.push({
           symbol: pair.symbol,
           side: pair.side === 'LONG' ? 'SELL' : 'BUY',
           positionSide: 'BOTH',
           type: type,
-          stopPrice: stopPrice.toFixed(symbol[0].pricePrecision),
+          stopPrice: stop,
           closePosition: 'true',
           timeInForce: 'GTE_GTC',
           workingType: 'MARK_PRICE',
           priceProtect: 'true',
         }
       );
-
-      this.logger.debug(`Bid ${type} ${pair.symbol} ${stopPrice}`);
     }
 
     return new Promise((resolve, reject) => {
