@@ -478,6 +478,7 @@ export class AppService {
         reduceOnly: 'false',
         activatePrice: stopPrice.toFixed(symbol[0].pricePrecision),
         priceRate: process.env.TRAILING_RATE,
+        callbackRate: process.env.TRAILING_RATE,
         workingType: 'MARK_PRICE', // 'CONTRACT_PRICE',
         priceProtect: 'true',
       });
