@@ -477,7 +477,7 @@ export class AppService {
         quantity: qty,
         reduceOnly: 'false',
         activatePrice: stopPrice.toFixed(symbol[0].pricePrecision),
-        priceRate: parseFloat(process.env.TRAILING_RATE).toString(),
+        priceRate: process.env.TRAILING_RATE,
         workingType: 'MARK_PRICE', // 'CONTRACT_PRICE',
         priceProtect: 'true',
       });
