@@ -478,7 +478,7 @@ export class AppService {
         quantity: qty,
         reduceOnly: 'false',
         activatePrice: stop,
-        priceRate: process.env.TRAILING_RATE,
+        // priceRate: process.env.TRAILING_RATE,
         callbackRate: process.env.TRAILING_RATE,
         workingType: 'MARK_PRICE', // 'CONTRACT_PRICE',
         priceProtect: 'true',
