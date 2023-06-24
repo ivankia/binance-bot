@@ -298,30 +298,31 @@ export class AppService {
               }
             }, 3000);
 
-            setTimeout(async () => {
-              try {
-                await this.placeOrder(pair, qty, price, 'TRAILING_STOP_MARKET');
-              } catch (e) {
-                console.log(e);
-                pair.status = StatusEnum.ERROR;
-                pair.message = JSON.stringify(e);
-                pair.date_updated = new Date();
-                pair.save();
-              }
-            }, 3000);
-
-            // setTimeout(async () => {
-            //   try {
-            //     await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET');
-            //   } catch (e) {
-            //     console.log(e);
-            //     pair.status = StatusEnum.ERROR;
-            //     pair.message = JSON.stringify(e);
-            //     pair.date_updated = new Date();
-            //     pair.save();
-            //   }
-            // }, 3000);
-            //
+            if (process.env.TRAILING_RATE) {
+              setTimeout(async () => {
+                try {
+                  await this.placeOrder(pair, qty, price, 'TRAILING_STOP_MARKET');
+                } catch (e) {
+                  console.log(e);
+                  pair.status = StatusEnum.ERROR;
+                  pair.message = JSON.stringify(e);
+                  pair.date_updated = new Date();
+                  pair.save();
+                }
+              }, 3000);
+            } else {
+              setTimeout(async () => {
+                try {
+                  await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET');
+                } catch (e) {
+                  console.log(e);
+                  pair.status = StatusEnum.ERROR;
+                  pair.message = JSON.stringify(e);
+                  pair.date_updated = new Date();
+                  pair.save();
+                }
+              }, 3000);
+            }
 
             pair.date_updated = new Date();
             pair.save();
