@@ -286,46 +286,28 @@ export class AppService {
             pair.status = StatusEnum.OPEN;
             pair.quantity = qty;
 
-            setTimeout(async () => {
-              try {
+            try {
+              setTimeout(async () => {
                 await this.placeOrder(pair, qty, price, 'STOP_MARKET');
-              } catch (e) {
-                console.log(e);
-                pair.status = StatusEnum.ERROR;
-                pair.message = JSON.stringify(e);
-                pair.date_updated = new Date();
-                pair.save();
-              }
-            }, 3000);
+              }, 3000);
 
-            if (process.env.TRAILING_RATE) {
-              setTimeout(async () => {
-                try {
+              if (process.env.TRAILING_RATE) {
+                setTimeout(async () => {
                   await this.placeOrder(pair, qty, price, 'TRAILING_STOP_MARKET');
-                } catch (e) {
-                  console.log(e);
-                  pair.status = StatusEnum.ERROR;
-                  pair.message = JSON.stringify(e);
-                  pair.date_updated = new Date();
-                  pair.save();
-                }
-              }, 3000);
-            } else {
-              setTimeout(async () => {
-                try {
+                }, 3000);
+              } else {
+                setTimeout(async () => {
                   await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET');
-                } catch (e) {
-                  console.log(e);
-                  pair.status = StatusEnum.ERROR;
-                  pair.message = JSON.stringify(e);
-                  pair.date_updated = new Date();
-                  pair.save();
-                }
-              }, 3000);
+                }, 3000);
+              }
+            } catch (e) {
+              console.log(e);
+              pair.status = StatusEnum.ERROR;
+              pair.message = JSON.stringify(e);
+            } finally {
+              pair.date_updated = new Date();
+              pair.save();
             }
-
-            pair.date_updated = new Date();
-            pair.save();
           }
         }
       } catch (e) {
@@ -419,7 +401,7 @@ export class AppService {
   }
 
   private async getSymbolInfo(symbol) {
-    let symbols: any = await this.exchangeInfoModel.find({'data.pair': symbol}).limit(1).sort({$natural: -1})
+    let symbols: any = await this.exchangeInfoModel.find({'data.pair': symbol}).limit(1).sort({$natural: -1});
     return symbols[0].data.filter(function (el) {
       return el.symbol === symbol;
     });
