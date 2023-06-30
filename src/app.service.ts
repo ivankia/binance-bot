@@ -1,4 +1,4 @@
-import {Injectable, Logger} from '@nestjs/common';
+import {HttpException, Injectable, InternalServerErrorException, Logger} from '@nestjs/common';
 import {Cron, CronExpression} from '@nestjs/schedule';
 import {StatusEnum} from './status.enum';
 import * as mongoose from 'mongoose';
@@ -288,16 +288,28 @@ export class AppService {
 
             try {
               setTimeout(async () => {
-                await this.placeOrder(pair, qty, price, 'STOP_MARKET');
+                await this.placeOrder(pair, qty, price, 'STOP_MARKET').catch(async () => {
+                  await this.placeOrder(pair, qty, price, 'STOP_MARKET').catch(error => {
+                    throw new Error(JSON.stringify(error));
+                  });
+                });
               }, 3000);
 
               if (process.env.TRAILING_RATE) {
                 setTimeout(async () => {
-                  await this.placeOrder(pair, qty, price, 'TRAILING_STOP_MARKET');
+                  await this.placeOrder(pair, qty, price, 'TRAILING_STOP_MARKET').catch(async () => {
+                    await this.placeOrder(pair, qty, price, 'TRAILING_STOP_MARKET').catch(error => {
+                      throw new Error(JSON.stringify(error));
+                    });
+                  });
                 }, 3000);
               } else {
                 setTimeout(async () => {
-                  await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET');
+                  await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET').catch(async () => {
+                    await this.placeOrder(pair, qty, price, 'TAKE_PROFIT_MARKET').catch(error => {
+                      throw new Error(JSON.stringify(error));
+                    });
+                  });
                 }, 3000);
               }
             } catch (e) {
