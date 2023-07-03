@@ -71,24 +71,28 @@ export class AppService {
   public async closeAllPositions(): Promise<boolean> {
     this.logger.debug('New signal, close all positions');
 
-    await this.binance.futuresPositionRisk().then(res => {
-      res.forEach(el => {
-        const amt = parseFloat(el.positionAmt);
-        if (amt !== 0) {
-          console.log(el, amt);
-        }
-        if (amt > 0) {
-          this.binance.futuresMarketSell(el.symbol, amt).then(res => {
-            this.logger.debug(`${el.symbol} closed ${JSON.stringify(res)}`);
-          });
-        }
-        if (amt < 0) {
-          this.binance.futuresMarketBuy(el.symbol, Math.abs(amt)).then(res => {
-            this.logger.debug(`${el.symbol} closed ${JSON.stringify(res)}`);
-          });
-        }
+    try {
+      await this.binance.futuresPositionRisk().then(res => {
+        res.forEach(el => {
+          const amt = parseFloat(el.positionAmt);
+          if (amt !== 0) {
+            console.log(el, amt);
+          }
+          if (amt > 0) {
+            this.binance.futuresMarketSell(el.symbol, amt).then(res => {
+              this.logger.debug(`${el.symbol} closed ${JSON.stringify(res)}`);
+            });
+          }
+          if (amt < 0) {
+            this.binance.futuresMarketBuy(el.symbol, Math.abs(amt)).then(res => {
+              this.logger.debug(`${el.symbol} closed ${JSON.stringify(res)}`);
+            });
+          }
+        });
       });
-    });
+    } catch (e) {
+      this.logger.error('Close position by market', e);
+    }
 
     const result: any[] = await this.signalModel.find({
       'status': { '$in': [StatusEnum.OPEN, StatusEnum.WAITING] },
@@ -102,11 +106,15 @@ export class AppService {
     for (const order of result) {
       let isOrderClosed = false;
 
-      await this.binance.futuresOpenOrders(order.symbol).then(res => {
-        if (!res.length) {
-          isOrderClosed = true;
-        }
-      });
+      try {
+        await this.binance.futuresOpenOrders(order.symbol).then(res => {
+          if (!res.length) {
+            isOrderClosed = true;
+          }
+        });
+      } catch (e) {
+        this.logger.error(`${order.symbol} get open stops`, e);
+      }
 
       if (isOrderClosed) {
         order.status = StatusEnum.CLOSED_AUTO;
